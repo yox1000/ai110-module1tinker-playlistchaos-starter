@@ -256,41 +256,42 @@ def add_song_sidebar():
 
 
 def playlist_tabs(playlists):
-    """Render playlists in tabs."""
+    """Render playlists in tabs with search and listing logic.
+
+    The old implementation used a separate `render_playlist` helper for each
+    tab; this version handles both tab creation and song display in one
+    place, reducing repetition and making it easier to add or remove moods.
+    """
     include_mixed = st.session_state.profile.get("include_mixed", True)
+    moods = ["Hype", "Chill"] + (["Mixed"] if include_mixed else [])
 
-    tab_labels = ["Hype", "Chill"]
-    if include_mixed:
-        tab_labels.append("Mixed")
+    tabs = st.tabs(moods)
 
-    tabs = st.tabs(tab_labels)
-
-    for label, tab in zip(tab_labels, tabs):
+    for mood, tab in zip(moods, tabs):
         with tab:
-            render_playlist(label, playlists.get(label, []))
+            st.subheader(f"{mood} playlist")
+            songs = playlists.get(mood, [])
+            if not songs:
+                st.write("No songs in this playlist.")
+                continue
+
+            query = st.text_input(f"Search {mood} playlist by artist", key=f"search_{mood}")
+            filtered = search_songs(songs, query, field="artist")
+
+            if not filtered:
+                st.write("No matching songs.")
+                continue
+
+            for song in filtered:
+                mood_val = song.get("mood", "?")
+                tags = ", ".join(song.get("tags", []))
+                st.write(
+                    f"- **{song['title']}** by {song['artist']} "
+                    f"(genre {song['genre']}, energy {song['energy']}, mood {mood_val}) "
+                    f"[{tags}]"
+                )
 
 
-def render_playlist(label, songs):
-    st.subheader(f"{label} playlist")
-    if not songs:
-        st.write("No songs in this playlist.")
-        return
-
-    query = st.text_input(f"Search {label} playlist by artist", key=f"search_{label}")
-    filtered = search_songs(songs, query, field="artist")
-
-    if not filtered:
-        st.write("No matching songs.")
-        return
-
-    for song in filtered:
-        mood = song.get("mood", "?")
-        tags = ", ".join(song.get("tags", []))
-        st.write(
-            f"- **{song['title']}** by {song['artist']} "
-            f"(genre {song['genre']}, energy {song['energy']}, mood {mood}) "
-            f"[{tags}]"
-        )
 
 
 def lucky_section(playlists):
